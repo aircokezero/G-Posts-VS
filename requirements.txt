@@ -1,0 +1,16 @@
+fastapi
+uvicorn[standard]
+sqlalchemy
+psycopg2-binary
+pydantic
+pydantic-settings
+python-dotenv
+jinja2
+python-multipart
+httpx
+google-genai
+openai
+supabase
+tenacity
+Pillow
+imagehash
