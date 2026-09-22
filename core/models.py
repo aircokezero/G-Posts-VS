@@ -52,6 +52,7 @@ class Competitor(Base):
 
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     profile_url: Mapped[str] = mapped_column(String(1000), nullable=False)
+    is_own_business: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     last_scraped_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     last_scrape_status: Mapped[str | None] = mapped_column(String(50))  # success | failed | needs_verification

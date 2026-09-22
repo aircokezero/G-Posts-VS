@@ -34,45 +34,45 @@ KEYWORDS = [
     f"dinner places {CITY}",
 ]
 
-# templates: {} placeholders filled per-post. topic drives trend analysis later.
+# templates: {} placeholders filled per-post. topic drives trend analysis.
 POST_TEMPLATES = [
     {
-        "topic": "Festive Offer",
+        "topic": "Promotional Offer",
         "text": "This {festival} season, enjoy {discount}% off on your total bill! Valid till {date_str}. Bring your family and celebrate with us.",
         "cta": "Call to reserve",
         "content_type": "promotion",
         "offer": True,
     },
     {
-        "topic": "New Menu Item",
+        "topic": "New Product/Service",
         "text": "Introducing our new {dish}! Made fresh daily with locally sourced ingredients. Available for dine-in and takeaway starting this week.",
         "cta": "Order now",
         "content_type": "product_update",
         "offer": False,
     },
     {
-        "topic": "Happy Hour",
+        "topic": "Limited-Time Deal",
         "text": "Happy Hour is here! {discount}% off on all beverages from {time_start} to {time_end}, every weekday. Perfect spot to unwind after work.",
         "cta": "Visit us today",
         "content_type": "promotion",
         "offer": True,
     },
     {
-        "topic": "Weekend Special",
+        "topic": "Limited-Time Deal",
         "text": "This weekend only: try our {dish} at a special price. Limited tables available, walk-ins welcome but reservations recommended.",
         "cta": "Book a table",
         "content_type": "promotion",
         "offer": True,
     },
     {
-        "topic": "Live Event",
+        "topic": "Event",
         "text": "Join us this {day} for a live {event_type} night! Great food, great music, no entry fee. Doors open at {time_start}.",
         "cta": "Learn more",
         "content_type": "event",
         "offer": False,
     },
     {
-        "topic": "Before/After Renovation",
+        "topic": "Facility/Renovation Update",
         "text": "We've refreshed our dining space! New seating, new ambience, same great food. Come see what's changed and enjoy a meal on us with any main course.",
         "cta": "Visit us today",
         "content_type": "announcement",
@@ -86,7 +86,7 @@ POST_TEMPLATES = [
         "offer": True,
     },
     {
-        "topic": "Festival Offer",
+        "topic": "Promotional Offer",
         "text": "Celebrate {festival} with our special thali starting at {amount}. Available all week, dine-in and delivery both.",
         "cta": "Order now",
         "content_type": "promotion",

@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Generate Content — {{ project.name }}{% endblock %}
+
+{% block content %}
+<a href="/projects/{{ project.id }}" class="text-sm text-gray-500 hover:underline">&larr; {{ project.name }}</a>
+{% if not has_grounding_data %}
+<div class="bg-amber-50 border border-amber-200 rounded p-3 text-sm text-amber-800 mb-4">
+    No analyzed posts yet for this project — generated ideas won't be grounded in real competitor data.
+    Add competitors, scrape or seed posts, and run analysis first for better results.
+</div>
+{% endif %}
+<h1 class="text-2xl font-bold mt-2 mb-6">Content Generator</h1>
+
+<form hx-post="/projects/{{ project.id }}/generate-ideas" hx-target="#generated-list" hx-swap="innerHTML"
+      hx-indicator="#gen-spinner" class="bg-white border rounded-lg p-4 mb-4 flex gap-2 items-end flex-wrap">
+    <div>
+        <label class="text-xs text-gray-500 block mb-1">How many</label>
+        <input type="number" name="count" value="5" min="1" max="50" class="border rounded px-2 py-1 w-24">
+    </div>
+    <div>
+        <label class="text-xs text-gray-500 block mb-1">Topic (optional)</label>
+        <select name="topic" class="border rounded px-2 py-1">
+            <option value="">Let AI choose</option>
+            {% for t in topics %}
+            <option value="{{ t }}">{{ t }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <button type="submit" class="bg-gray-900 text-white rounded px-4 py-1 text-sm">Generate</button>
+</form>
+
+<span id="gen-spinner" class="htmx-indicator text-sm text-gray-500">Generating, this can take a moment...</span>
+
+<div id="generated-list">
+    {% include "_generated_list.html" %}
+</div>
+{% endblock %}

@@ -1,0 +1,51 @@
+<form id="bulk-delete-form" hx-post="/generated-ideas/bulk-delete" hx-target="#generated-list" hx-swap="innerHTML"
+      hx-confirm="Delete the selected idea(s)?">
+    <input type="hidden" name="project_id" value="{{ ideas[0].project_id if ideas else '' }}">
+
+    {% if limit_message %}
+    <div class="bg-amber-50 border border-amber-200 rounded p-3 text-sm text-amber-800 mb-3">{{ limit_message }}</div>
+    {% endif %}
+
+    {% if ideas %}
+    <div class="flex items-center justify-between mb-3">
+        <label class="flex items-center gap-2 text-sm text-gray-600">
+            <input type="checkbox" id="select-all-checkbox"
+                   onclick="document.querySelectorAll('.idea-checkbox').forEach(cb => cb.checked = this.checked); updateDeleteButton();">
+            Select all
+        </label>
+        <button type="submit" id="delete-selected-btn" class="hidden text-red-500 text-sm hover:underline">Delete Selected</button>
+    </div>
+    {% endif %}
+
+    <div class="grid gap-3">
+        {% for idea in ideas %}
+        <div class="bg-white border rounded-lg p-4 flex gap-3">
+            <input type="checkbox" name="idea_ids" value="{{ idea.id }}" class="idea-checkbox mt-1" onchange="updateDeleteButton()">
+            <div class="flex-1">
+                <span class="text-xs px-2 py-1 rounded bg-purple-100 text-purple-700">{{ idea.topic or "—" }}</span>
+                <p class="text-sm text-gray-700 mt-2">{{ idea.copy_text }}</p>
+                <div class="flex gap-3 mt-2 text-xs text-gray-500">
+                    {% if idea.cta %}<span>CTA: {{ idea.cta }}</span>{% endif %}
+                    {% if idea.keywords %}<span>Keywords: {{ idea.keywords | join(", ") }}</span>{% endif %}
+                </div>
+                {% if idea.image_concept %}
+                <div class="mt-2 text-xs text-gray-500 italic">Image concept: {{ idea.image_concept }}</div>
+                <button type="button" disabled class="mt-2 text-xs bg-gray-100 text-gray-400 rounded px-3 py-1 cursor-not-allowed">
+                    Generate AI Image (Coming soon)
+                </button>
+                {% endif %}
+            </div>
+        </div>
+        {% else %}
+        <p class="text-gray-500 text-sm">No content generated yet.</p>
+        {% endfor %}
+    </div>
+</form>
+
+<script>
+    function updateDeleteButton() {
+        const anyChecked = document.querySelectorAll('.idea-checkbox:checked').length > 0;
+        const btn = document.getElementById('delete-selected-btn');
+        if (btn) btn.classList.toggle('hidden', !anyChecked);
+    }
+</script>
