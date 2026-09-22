@@ -1,0 +1,15 @@
+<div class="grid gap-3">
+    {% for p in projects %}
+    <div id="project-{{ p.id }}" class="bg-white border rounded-lg p-4 flex justify-between items-center hover:border-gray-400">
+        <a href="/projects/{{ p.id }}" class="flex-1">
+            <div class="font-semibold">{{ p.name }}</div>
+            <div class="text-sm text-gray-500">{{ p.own_business_name or "—" }}</div>
+        </a>
+        <button hx-delete="/projects/{{ p.id }}" hx-target="#project-list" hx-swap="innerHTML"
+        hx-confirm="Deleting this project will delete it's competitors, posts, keywords, all of it. Are you sure?"
+        class="text-red-500 text-sm hover:underline ml-4">Delete</button>
+    </div>
+    {% else %}
+    <p class="text-gray-500">No projects yet — create one above.</p>
+    {% endfor %}
+</div>

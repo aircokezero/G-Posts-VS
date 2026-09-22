@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}{{ project.name }}{% endblock %}
+
+{% block content %}
+<a href="/projects" class="text-sm text-gray-500 hover:underline">&larr; All Projects</a>
+<h1 class="text-2xl font-bold mt-2 mb-1">{{ project.name }}</h1>
+<button hx-delete="/projects/{{ project.id }}" hx-confirm="Delete this project and everything in it — competitors, posts, keywords, all of it. Are you sure?"
+        hx-target="body" hx-swap="none"
+        onclick="setTimeout(() => window.location.href = '/projects', 300)"
+        class="text-red-500 text-sm hover:underline">Delete this project</button>
+<p class="text-gray-500 mb-6">{{ project.own_business_name or "—" }}</p>
+<a href="/posts?project_id={{ project.id }}" class="text-sm text-blue-600 hover:underline">View this project's repository &rarr;</a>
+
+<div class="grid md:grid-cols-2 gap-8 mt-6">
+
+    <div>
+        <h2 class="font-semibold mb-3">Competitors</h2>
+        <form hx-post="/projects/{{ project.id }}/competitors" hx-target="#competitor-list" hx-swap="innerHTML"
+              hx-on::after-request="this.reset()"
+              class="flex gap-2 mb-4">
+            <input type="text" name="name" placeholder="Competitor name" required class="border rounded px-2 py-1 flex-1">
+            <input type="url" name="profile_url" placeholder="Profile URL" required class="border rounded px-2 py-1 flex-1">
+            <button type="submit" class="bg-gray-900 text-white rounded px-3 py-1">Add</button>
+        </form>
+        <div id="competitor-list">
+            {% include "_competitor_list.html" %}
+        </div>
+    </div>
+
+    <div>
+        <h2 class="font-semibold mb-3">Keywords</h2>
+        <form hx-post="/projects/{{ project.id }}/keywords" hx-target="#keyword-list" hx-swap="innerHTML"
+              hx-on::after-request="this.reset()"
+              class="flex gap-2 mb-4">
+            <input type="text" name="keyword" placeholder="e.g. restaurants in Kharghar" required class="border rounded px-2 py-1 flex-1">
+            <button type="submit" class="bg-gray-900 text-white rounded px-3 py-1">Add</button>
+        </form>
+        <div id="keyword-list">
+            {% include "_keyword_list.html" %}
+        </div>
+    </div>
+
+</div>
+{% endblock %}

@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Projects{% endblock %}
+
+{% block content %}
+<h1 class="text-2xl font-bold mb-4">Projects</h1>
+
+<form hx-post="/projects" hx-target="#project-list" hx-swap="innerHTML" hx-on::after-request="this.reset()"
+      class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6 bg-white p-4 rounded-lg border">
+    <input type="text" name="name" placeholder="Project name" required class="border rounded px-2 py-1">
+    <input type="text" name="own_business_name" placeholder="Your business name" required class="border rounded px-2 py-1">
+    <input type="url" name="own_business_profile_url" placeholder="Your Google Maps profile URL" required class="border rounded px-2 py-1">
+    <button type="submit" class="bg-gray-900 text-white rounded px-4 py-1 md:col-span-3">Create Project</button>
+</form>
+
+<div id="project-list">
+    {% include "_project_list.html" %}
+</div>
+{% endblock %}

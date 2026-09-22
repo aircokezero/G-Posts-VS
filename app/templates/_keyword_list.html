@@ -1,0 +1,11 @@
+<div class="grid gap-2">
+    {% for k in keywords %}
+    <div id="keyword-{{ k.id }}" class="bg-white border rounded p-3 flex justify-between items-center">
+        <span>{{ k.keyword }}</span>
+        <button hx-delete="/keywords/{{ k.id }}" hx-target="#keyword-list" hx-swap="innerHTML"
+                class="text-red-500 text-sm hover:underline">Remove</button>
+    </div>
+    {% else %}
+    <p class="text-gray-500 text-sm">No keywords added yet.</p>
+    {% endfor %}
+</div>

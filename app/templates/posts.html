@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Repository{% endblock %}
+
+{% block content %}
+<h1 class="text-2xl font-bold mb-4">Post Repository</h1>
+
+<form hx-get="/posts" hx-target="#results" hx-swap="innerHTML" hx-push-url="true"
+      class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6 bg-white p-4 rounded-lg border">
+
+    <select name="project_id" class="border rounded px-2 py-1">
+        <option value="">All Projects</option>
+        {% for p in projects %}
+        <option value="{{ p.id }}" {% if p.id == filters.project_id %}selected{% endif %}>{{ p.name }}</option>
+        {% endfor %}
+    </select>
+
+    <select name="competitor_id" class="border rounded px-2 py-1">
+        <option value="">All Competitors</option>
+        {% for c in competitors %}
+        <option value="{{ c.id }}" {% if c.id == filters.competitor_id %}selected{% endif %}>{{ c.name }}</option>
+        {% endfor %}
+    </select>
+
+    <select name="topic" class="border rounded px-2 py-1">
+        <option value="">All Topics</option>
+        {% for t in topics %}
+        <option value="{{ t }}" {% if t == filters.topic %}selected{% endif %}>{{ t }}</option>
+        {% endfor %}
+    </select>
+
+    <select name="source" class="border rounded px-2 py-1">
+        <option value="">All Sources</option>
+        <option value="seed_demo_data" {% if filters.source == 'seed_demo_data' %}selected{% endif %}>Demo Data</option>
+        <option value="live_scrape" {% if filters.source == 'live_scrape' %}selected{% endif %}>Live Scraped</option>
+    </select>
+
+    <input type="text" name="keyword" placeholder="Search text..." value="{{ filters.keyword or '' }}"
+           class="border rounded px-2 py-1 col-span-2">
+
+    <input type="date" name="date_from" value="{{ filters.date_from or '' }}" class="border rounded px-2 py-1">
+    <input type="date" name="date_to" value="{{ filters.date_to or '' }}" class="border rounded px-2 py-1">
+
+    <button type="submit" class="bg-gray-900 text-white rounded px-4 py-1 col-span-2 md:col-span-4">
+        Apply Filters
+    </button>
+</form>
+
+<div id="results">
+    {% include "_posts_list.html" %}
+</div>
+{% endblock %}

@@ -1,0 +1,27 @@
+<p class="text-sm text-gray-500 mb-3">{{ posts|length }} post(s) found</p>
+
+<div class="grid gap-4">
+    {% for post in posts %}
+    <div class="bg-white border rounded-lg p-4 flex gap-4">
+        {% if post.image_urls %}
+        <img src="{{ post.image_urls[0] }}" class="w-28 h-28 object-cover rounded flex-shrink-0">
+        {% endif %}
+        <div class="flex-1">
+            <div class="flex justify-between items-start">
+                <span class="font-semibold">{{ post.competitor.name }}</span>
+                <span class="text-xs px-2 py-1 rounded {{ 'bg-blue-100 text-blue-700' if post.source_reference == 'seed_demo_data' else 'bg-green-100 text-green-700' }}">
+                    {{ post.source_reference }}
+                </span>
+            </div>
+            <p class="text-sm text-gray-700 mt-1">{{ post.post_text }}</p>
+            <div class="flex gap-3 mt-2 text-xs text-gray-500">
+                <span>Topic: {{ post.topic or "—" }}</span>
+                <span>CTA: {{ post.cta or "—" }}</span>
+                <span>{{ post.published_date.strftime("%d %b %Y") if post.published_date else "—" }}</span>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <p class="text-gray-500">No posts match these filters.</p>
+    {% endfor %}
+</div>

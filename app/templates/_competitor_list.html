@@ -1,0 +1,16 @@
+<div class="grid gap-2">
+    {% for c in competitors %}
+    <div id="competitor-{{ c.id }}" class="bg-white border rounded p-3 flex justify-between items-center">
+        <div>
+            <div class="font-medium">{{ c.name }}</div>
+            <div class="text-xs text-gray-500">{{ c.profile_url or "—" }}</div>
+            <div class="text-xs text-gray-400">{{ c.total_posts_collected }} posts &middot; last scraped: {{ c.last_scraped_at.strftime("%d %b %Y") if c.last_scraped_at else "never" }}</div>
+        </div>
+        <button hx-delete="/competitors/{{ c.id }}" hx-target="#competitor-list" hx-swap="innerHTML"
+                hx-confirm="Remove this competitor and all their posts?"
+                class="text-red-500 text-sm hover:underline">Remove</button>
+    </div>
+    {% else %}
+    <p class="text-gray-500 text-sm">No competitors added yet.</p>
+    {% endfor %}
+</div>

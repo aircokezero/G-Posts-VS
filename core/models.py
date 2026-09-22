@@ -32,8 +32,8 @@ class Project(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
 
-    own_business_name: Mapped[str | None] = mapped_column(String(255))
-    own_business_profile_url: Mapped[str | None] = mapped_column(String(1000))
+    own_business_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    own_business_profile_url: Mapped[str] = mapped_column(String(1000), nullable=False)
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
@@ -51,7 +51,7 @@ class Competitor(Base):
     project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), nullable=False)
 
     name: Mapped[str] = mapped_column(String(255), nullable=False)
-    profile_url: Mapped[str | None] = mapped_column(String(1000))
+    profile_url: Mapped[str] = mapped_column(String(1000), nullable=False)
 
     last_scraped_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     last_scrape_status: Mapped[str | None] = mapped_column(String(50))  # success | failed | needs_verification
@@ -61,7 +61,7 @@ class Competitor(Base):
 
     project: Mapped["Project"] = relationship(back_populates="competitors")
     posts: Mapped[list["Post"]] = relationship(back_populates="competitor", cascade="all, delete-orphan")
-    scrape_jobs: Mapped[list["ScrapeJob"]] = relationship(back_populates="competitor")
+    scrape_jobs: Mapped[list["ScrapeJob"]] = relationship(back_populates="competitor", cascade="all, delete-orphan")
 
 
 class Keyword(Base):
