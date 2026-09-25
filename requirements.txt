@@ -14,3 +14,5 @@ supabase
 tenacity
 Pillow
 imagehash
+undetected-chromedriver
+selenium

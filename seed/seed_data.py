@@ -10,6 +10,7 @@ from datetime import datetime, timedelta, timezone
 
 from core.db import SessionLocal
 from core.models import Project, Competitor, Keyword, Post
+from core.services import make_fingerprint, refresh_competitor_stats
 
 # ─────────────────────────────────────────────
 # CONFIG — swap this block for any vertical/city
@@ -109,11 +110,6 @@ IMAGE_POOL = [f"food_{i}.jpg" for i in range(1, 9)]  # adjust to match what's ac
 # GENERIC LOGIC — do not hardcode vertical here
 # ─────────────────────────────────────────────
 
-def make_fingerprint(competitor_name: str, text: str) -> str:
-    normalized = " ".join(text.lower().split())
-    raw = f"{competitor_name}|{normalized}"
-    return hashlib.sha256(raw.encode()).hexdigest()
-
 
 def fill_template(template: dict) -> dict:
     text = template["text"].format(
@@ -205,19 +201,21 @@ def run():
         for template in competitor_templates:
             filled = fill_template(template)
             image_url = upload_random_image(supabase_client, bucket) if supabase_client else None
+            post_url = f"{comp_data['profile_url']}&post={random.randint(10000,99999)}"
+            published_date = random_recent_date()
 
             post = Post(
                 project_id=project.id,
                 competitor_id=competitor.id,
-                post_url=f"{comp_data['profile_url']}&post={random.randint(10000,99999)}",
+                post_url=post_url,
                 post_text=filled["text"],
-                published_date=random_recent_date(),
+                published_date=published_date,
                 image_urls=[image_url] if image_url else [],
                 cta=filled["cta"],
                 topic=filled["topic"],
                 content_type=filled["content_type"],
                 offer_detected=filled["offer"],
-                fingerprint=make_fingerprint(competitor.name, filled["text"]),
+                fingerprint=make_fingerprint(post_url, filled["text"], published_date),
                 source_reference="seed_demo_data",
             )
             db.add(post)
@@ -225,6 +223,16 @@ def run():
         competitor.total_posts_collected = len(competitor_templates)
         competitor.last_scraped_at = datetime.now(timezone.utc)
         competitor.last_scrape_status = "success"
+
+    db.commit()  # commit posts first so refresh_competitor_stats can count them
+
+    for comp_data in COMPETITORS:
+        competitor = db.query(Competitor).filter(
+            Competitor.project_id == project.id, Competitor.name == comp_data["name"]
+        ).first()
+        if competitor:
+            refresh_competitor_stats(db, competitor.id)
+            competitor.last_scrape_status = "success"
 
     db.commit()
     print(f"Seeded project '{PROJECT_NAME}' with {len(COMPETITORS)} competitors and posts.")

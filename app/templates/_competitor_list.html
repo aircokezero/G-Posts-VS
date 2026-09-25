@@ -2,13 +2,13 @@
     {% for c in competitors %}
     <div id="competitor-{{ c.id }}" class="bg-white border rounded p-3 flex justify-between items-center">
     <div>
-        <div class="font-medium flex items-center gap-2">
+        <div class="font-medium flex items-center gap-2 break-all">
             {{ c.name }}
             {% if c.is_own_business %}
             <span class="text-xs px-2 py-0.5 rounded bg-blue-100 text-blue-700">Your Business</span>
             {% endif %}
         </div>
-            <div class="text-xs text-gray-500">{{ c.profile_url or "—" }}</div>
+            <div class="text-xs text-gray-500 break-all">{{ c.profile_url or "—" }}</div>
             <div class="text-xs text-gray-400">{{ c.total_posts_collected }} posts &middot; last scraped: {{ c.last_scraped_at.strftime("%d %b %Y") if c.last_scraped_at else "never" }}</div>
         </div>
         {% if not c.is_own_business %}
