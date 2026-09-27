@@ -168,4 +168,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## Project Demostration Video
 
 A video summarizing the project and key bits of it's architecture was made for this project.
-![Watch here](https://youtu.be/htjZKmci4f4)
+[Watch here](https://youtu.be/htjZKmci4f4)
