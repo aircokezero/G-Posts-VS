@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Insights — {{ project.name }}{% endblock %}
+
+{% block content %}
+<a href="/projects/{{ project.id }}/dashboard" class="text-sm text-gray-500 hover:underline">&larr; Dashboard</a>
+<div class="flex items-center gap-2 mt-2 mb-6">
+    <h1 class="text-2xl font-bold">Ask About Your Data</h1>
+    <span class="text-xs px-2 py-1 rounded bg-purple-100 text-purple-700 font-medium">Experimental</span>
+</div>
+
+<div class="bg-white border rounded-lg p-4 mb-4">
+    <div id="chat-messages" class="flex flex-col gap-3 max-h-[50vh] overflow-y-auto mb-4">
+        {% include "_chat_messages.html" %}
+    </div>
+
+    {% if starter_questions %}
+    <div class="flex flex-wrap gap-2 mb-4">
+        {% for q in starter_questions %}
+        <button
+            hx-post="/projects/{{ project.id }}/insights/chat"
+            hx-vals='{"message": "{{ q }}"}'
+            hx-target="#chat-messages" hx-swap="innerHTML"
+            hx-indicator="#chat-spinner"
+            class="text-sm bg-blue-50 text-blue-700 border border-blue-200 rounded-full px-3 py-1 hover:bg-blue-100">
+            {{ q }}
+        </button>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <form hx-post="/projects/{{ project.id }}/insights/chat" hx-target="#chat-messages" hx-swap="innerHTML"
+          hx-indicator="#chat-spinner" hx-on::after-request="this.reset()"
+          class="flex gap-2">
+        <input type="text" name="message" placeholder="Ask a question about your competitors..." required
+               class="border rounded px-3 py-2 flex-1">
+        <button type="submit" class="bg-gray-900 text-white rounded px-4 py-2 text-sm">Ask</button>
+    </form>
+    <span id="chat-spinner" class="htmx-indicator text-xs text-gray-500 mt-1 block">Thinking...</span>
+
+    <p class="text-xs text-gray-400 mt-4 border-t pt-3">
+        AI responses may be inaccurate for medium-to-high complexity questions. For the most reliable
+        insights, rely primarily on the dashboard's graphs and their generated insight summaries; use
+        this chat as a supplementary, exploratory tool.
+    </p>
+</div>
+</div>
+{% endblock %}

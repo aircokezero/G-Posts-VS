@@ -49,26 +49,28 @@ def _call_gemini(prompt: str) -> str:
 
 
 @retry(stop=stop_after_attempt(2), wait=wait_exponential(multiplier=1, min=2, max=8))
-def _call_groq(prompt: str) -> str:
+def _call_groq(prompt: str, force_json: bool = True) -> str:
     client = OpenAI(
         api_key=os.environ["GROQ_API_KEY"],
         base_url="https://api.groq.com/openai/v1",
     )
+    kwargs = {"response_format": {"type": "json_object"}} if force_json else {}
     response = client.chat.completions.create(
         model="openai/gpt-oss-120b",
         messages=[{"role": "user", "content": prompt}],
         max_tokens=4000,
-        response_format={"type": "json_object"},
+        **kwargs,
     )
     return response.choices[0].message.content
 
 
-def _call_llm_with_fallback(prompt: str) -> str:
-    """Tries Gemini first, falls back to Groq on any failure. Used by both
-    analysis and generation so there's one place this resilience lives."""
-    for call_fn, provider_name in [(_call_gemini, "gemini"), (_call_groq, "groq")]:
+def _call_llm_with_fallback(prompt: str, force_json: bool = True) -> str:
+    for provider_name in ["gemini", "groq"]:
         try:
-            return call_fn(prompt)
+            if provider_name == "gemini":
+                return _call_gemini(prompt)
+            else:
+                return _call_groq(prompt, force_json=force_json)
         except Exception as e:
             cause = e.last_attempt.exception() if hasattr(e, "last_attempt") else e
             print(f"{provider_name} failed: {cause}")
@@ -203,3 +205,62 @@ Return ONLY a JSON object, no preamble, no markdown fences:
         except ValidationError as e:
             print(f"Skipping malformed generated item: {e}")
     return results
+
+
+def generate_gap_insight(data: dict) -> str:
+    lines = "\n".join(
+        f"- {t}: competitors {cp}%, you {op}%"
+        for t, cp, op in zip(data["topics"], data["competitor_pct"], data["own_pct"])
+    ) or "- no topic data yet"
+
+    prompt = f"""Topic coverage comparison for a business vs its Google Maps competitors:
+{lines}
+
+Write ONE short, specific, actionable sentence (max 2 sentences) telling the business owner
+the single most important content gap to address. Name the topic explicitly. No preamble, no markdown."""
+    return _call_llm_with_fallback(prompt, force_json=False).strip()
+
+
+def generate_frequency_insight(data: dict) -> str:
+    prompt = f"""Posting frequency comparison, posts per week:
+Weeks: {data['weeks']}
+Your business: {data['own_series']}
+Competitor average: {data['competitor_series']}
+
+Write ONE short, specific, actionable sentence (max 2 sentences) about how this business's
+posting frequency compares to competitors and what to do about it. No preamble, no markdown."""
+    return _call_llm_with_fallback(prompt, force_json=False).strip()
+
+
+def generate_starter_questions(context: dict) -> list[str]:
+    context_block = _build_context_block(context)
+    prompt = f"""{context_block}
+
+Generate exactly 3 short, specific questions (under 12 words each) a business owner might ask
+about this competitive data — questions this data can actually answer.
+
+Return ONLY a JSON object, no preamble, no markdown fences:
+{{"questions": ["...", "...", "..."]}}"""
+    raw = _call_llm_with_fallback(prompt, force_json=True)
+    parsed = json.loads(_clean_json_text(raw))
+    return parsed.get("questions", [])[:3]
+
+
+def generate_chat_response(context: dict, history: list[dict], user_message: str) -> str:
+    context_block = _build_context_block(context)
+    history_block = "\n".join(f"{m['role']}: {m['content']}" for m in history[-10:]) or "(no previous messages)"
+
+    prompt = f"""{context_block}
+
+You are a competitor-intelligence assistant helping a business owner understand their competitive
+position, grounded ONLY in the data above. If something isn't covered by this data, say so honestly
+rather than inventing an answer.
+
+Conversation so far:
+{history_block}
+
+User: {user_message}
+
+Respond conversationally and concisely (2-4 sentences unless more detail is genuinely warranted),
+grounded in the data above. No markdown formatting."""
+    return _call_llm_with_fallback(prompt, force_json=False).strip()

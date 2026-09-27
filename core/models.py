@@ -42,6 +42,8 @@ class Project(Base):
     posts: Mapped[list["Post"]] = relationship(back_populates="project", cascade="all, delete-orphan")
     scrape_jobs: Mapped[list["ScrapeJob"]] = relationship(back_populates="project", cascade="all, delete-orphan")
     generated_ideas: Mapped[list["GeneratedIdea"]] = relationship(back_populates="project", cascade="all, delete-orphan")
+    dashboard_insights: Mapped[dict | None] = mapped_column(JSONB)
+    chat_messages: Mapped[list["ChatMessage"]] = relationship(cascade="all, delete-orphan")
 
 
 class Competitor(Base):
@@ -155,3 +157,12 @@ class GeneratedIdea(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     project: Mapped["Project"] = relationship(back_populates="generated_ideas")
+
+class ChatMessage(Base):
+    __tablename__ = "chat_messages"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), nullable=False)
+    role: Mapped[str] = mapped_column(String(20), nullable=False)  # "user" | "assistant"
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

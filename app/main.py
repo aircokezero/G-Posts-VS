@@ -9,12 +9,17 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from sqlalchemy import distinct, func
 from core.db import get_db
+import json as json_module
+import subprocess
+import sys
 
-from core.models import Project, Competitor, Post, Keyword, GeneratedIdea, ScrapeJob, GeneratedIdea
-from core.llm import analyze_posts_batch, embed_text, cosine_similarity, generate_content
+from core.models import Project, Competitor, Post, Keyword, GeneratedIdea, ScrapeJob, GeneratedIdea, ChatMessage
+from core.insights import compute_gap_data, compute_frequency_data, get_or_generate_insight
+from core.llm import analyze_posts_batch, embed_text, cosine_similarity, generate_content, generate_gap_insight, generate_frequency_insight, generate_starter_questions, generate_chat_response
 from core.taxonomy import TOPICS
 
 DAILY_GENERATION_LIMIT = 50
+DAILY_CHAT_LIMIT = 15
 
 app = FastAPI(title="Google Maps Competitor Intelligence Tool")
 templates = Jinja2Templates(directory="app/templates")
@@ -124,13 +129,11 @@ def project_dashboard(project_id: int, request: Request, db: Session = Depends(g
     competitor_count = db.query(Competitor).filter(
         Competitor.project_id == project_id, Competitor.is_own_business == False
     ).count()
-    total_posts = db.query(Post).filter(Post.project_id == project_id).count()  # includes own posts — total repository size, intentionally unfiltered
+    total_posts = db.query(Post).filter(Post.project_id == project_id).count()
     generated_count = db.query(GeneratedIdea).filter(GeneratedIdea.project_id == project_id).count()
 
     last_scraped = (
-        db.query(func.max(Competitor.last_scraped_at))
-        .filter(Competitor.project_id == project_id)
-        .scalar()
+        db.query(func.max(Competitor.last_scraped_at)).filter(Competitor.project_id == project_id).scalar()
     )
 
     latest_job_stats = (
@@ -139,36 +142,25 @@ def project_dashboard(project_id: int, request: Request, db: Session = Depends(g
             func.coalesce(func.sum(ScrapeJob.duplicates_skipped), 0).label("duplicates"),
             func.count(ScrapeJob.id).filter(ScrapeJob.status == "failed").label("failed"),
         )
-        .filter(ScrapeJob.project_id == project_id)
-        .first()
+        .filter(ScrapeJob.project_id == project_id).first()
     )
 
     topic_rows = (
-        db.query(
-            Post.topic,
-            func.count(func.distinct(Post.competitor_id)).label("competitor_count"),
-            func.count(Post.id).label("occurrence_count"),
-        )
+        db.query(Post.topic, func.count(func.distinct(Post.competitor_id)).label("competitor_count"),
+                  func.count(Post.id).label("occurrence_count"))
         .join(Competitor, Post.competitor_id == Competitor.id)
         .filter(Post.project_id == project_id, Post.topic.isnot(None), Competitor.is_own_business == False)
-        .group_by(Post.topic)
-        .order_by(func.count(func.distinct(Post.competitor_id)).desc())
-        .all()
+        .group_by(Post.topic).order_by(func.count(func.distinct(Post.competitor_id)).desc()).all()
     )
     trends = [
-        {
-            "topic": r.topic,
-            "competitor_count": r.competitor_count,
-            "total_competitors": competitor_count,
-            "occurrence_count": r.occurrence_count,
-            "percentage": round((r.competitor_count / competitor_count) * 100) if competitor_count else 0,
-        }
+        {"topic": r.topic, "competitor_count": r.competitor_count, "total_competitors": competitor_count,
+         "occurrence_count": r.occurrence_count,
+         "percentage": round((r.competitor_count / competitor_count) * 100) if competitor_count else 0}
         for r in topic_rows
     ]
 
     all_posts_keywords = (
-        db.query(Post.detected_keywords)
-        .join(Competitor, Post.competitor_id == Competitor.id)
+        db.query(Post.detected_keywords).join(Competitor, Post.competitor_id == Competitor.id)
         .filter(Post.project_id == project_id, Post.detected_keywords.isnot(None), Competitor.is_own_business == False)
         .all()
     )
@@ -178,21 +170,57 @@ def project_dashboard(project_id: int, request: Request, db: Session = Depends(g
             keyword_counter.update(k.lower() for k in keywords)
     top_keywords = keyword_counter.most_common(8)
 
+    # new: gap + frequency data and their cached insights
+    gap_data = compute_gap_data(db, project_id)
+    freq_data = compute_frequency_data(db, project_id)
+    gap_insight = get_or_generate_insight(db, project, "gap", gap_data, generate_gap_insight) if gap_data["topics"] else None
+    freq_insight = get_or_generate_insight(db, project, "frequency", freq_data, generate_frequency_insight) if freq_data["weeks"] else None
+
     return templates.TemplateResponse(
         request, "dashboard.html",
         {
-            "project": project,
-            "competitor_count": competitor_count,
-            "total_posts": total_posts,
-            "generated_count": generated_count,
-            "last_scraped": last_scraped,
-            "new_posts": latest_job_stats.new_posts,
-            "duplicates": latest_job_stats.duplicates,
-            "failed": latest_job_stats.failed,
-            "trends": trends,
-            "top_keywords": top_keywords,
+            "project": project, "competitor_count": competitor_count, "total_posts": total_posts,
+            "generated_count": generated_count, "last_scraped": last_scraped,
+            "new_posts": latest_job_stats.new_posts, "duplicates": latest_job_stats.duplicates,
+            "failed": latest_job_stats.failed, "trends": trends, "top_keywords": top_keywords,
+            "gap_data_json": json_module.dumps(gap_data), "freq_data_json": json_module.dumps(freq_data),
+            "gap_insight": gap_insight, "freq_insight": freq_insight,
         },
     )
+
+
+@app.get("/projects/{project_id}/logs")
+def scrape_logs_page(project_id: int, request: Request, db: Session = Depends(get_db)):
+    project = db.query(Project).filter(Project.id == project_id).first()
+    jobs = (
+        db.query(ScrapeJob, Competitor.name)
+        .join(Competitor, ScrapeJob.competitor_id == Competitor.id)
+        .filter(ScrapeJob.project_id == project_id)
+        .order_by(ScrapeJob.started_at.desc().nullslast())
+        .limit(100)
+        .all()
+    )
+    return templates.TemplateResponse(request, "logs.html", {"project": project, "jobs": jobs})
+
+
+@app.get("/projects/{project_id}/insights")
+def insights_chat_page(project_id: int, request: Request, db: Session = Depends(get_db)):
+    project = db.query(Project).filter(Project.id == project_id).first()
+    messages = db.query(ChatMessage).filter(ChatMessage.project_id == project_id).order_by(ChatMessage.created_at).all()
+
+    starter_questions = []
+    if not messages:
+        context = build_project_context(db, project_id)
+        try:
+            starter_questions = generate_starter_questions(context)
+        except Exception as e:
+            print(f"Starter question generation failed: {e}")
+
+    return templates.TemplateResponse(
+        request, "insights.html",
+        {"project": project, "messages": messages, "starter_questions": starter_questions},
+    )
+
 
 @app.post("/projects/{project_id}/analyze")
 def analyze_project_posts(project_id: int, request: Request, db: Session = Depends(get_db)):
@@ -348,6 +376,38 @@ def bulk_delete_ideas(request: Request, project_id: int = Form(...), idea_ids: l
     return templates.TemplateResponse(request, "_generated_list.html", {"ideas": ideas})
 
 
+@app.post("/projects/{project_id}/insights/chat")
+def send_chat_message(project_id: int, request: Request, message: str = Form(...), db: Session = Depends(get_db)):
+    today_start = datetime.combine(datetime.now(timezone.utc).date(), dtime.min, tzinfo=timezone.utc)
+    sent_today = db.query(ChatMessage).filter(
+        ChatMessage.project_id == project_id, ChatMessage.role == "user", ChatMessage.created_at >= today_start
+    ).count()
+
+    if sent_today >= DAILY_CHAT_LIMIT:
+        messages = db.query(ChatMessage).filter(ChatMessage.project_id == project_id).order_by(ChatMessage.created_at).all()
+        return templates.TemplateResponse(request, "_chat_messages.html",
+            {"messages": messages, "limit_message": f"Daily question limit ({DAILY_CHAT_LIMIT}) reached for this project. Try again tomorrow."})
+
+    db.add(ChatMessage(project_id=project_id, role="user", content=message))
+    db.commit()
+
+    history = db.query(ChatMessage).filter(ChatMessage.project_id == project_id).order_by(ChatMessage.created_at).all()
+    history_dicts = [{"role": m.role, "content": m.content} for m in history[:-1]]  # exclude the message just sent
+
+    context = build_project_context(db, project_id)
+    try:
+        reply = generate_chat_response(context, history_dicts, message)
+    except Exception as e:
+        reply = "Sorry, I couldn't generate a response right now — please try again."
+        print(f"Chat generation failed: {e}")
+
+    db.add(ChatMessage(project_id=project_id, role="assistant", content=reply))
+    db.commit()
+
+    messages = db.query(ChatMessage).filter(ChatMessage.project_id == project_id).order_by(ChatMessage.created_at).all()
+    return templates.TemplateResponse(request, "_chat_messages.html", {"messages": messages})
+
+
 @app.delete("/projects/{project_id}")
 def delete_project(project_id: int, request: Request, db: Session = Depends(get_db)):
     project = db.query(Project).filter(Project.id == project_id).first()
@@ -435,6 +495,32 @@ def build_project_context(db: Session, project_id: int) -> dict:
         "post_frequency": post_frequency,
         "sample_posts": sample_posts,
     }
+
+
+@app.post("/projects/{project_id}/scrape")
+def start_scrape_job(project_id: int, request: Request):
+    """
+    Launches scraper/run.py as a separate background process rather than
+    calling it inline — a live Selenium session (with a possible manual
+    CAPTCHA pause) can run for minutes, far longer than an HTTP request
+    should block for. The browser window it opens is visible on this
+    machine; the web request just doesn't wait for it to finish.
+    """
+    try:
+        subprocess.Popen(
+            [sys.executable, "-m", "scraper.run", str(project_id)],
+            creationflags=subprocess.CREATE_NEW_CONSOLE,  # Windows-only: opens its own terminal window for visibility
+        )
+        message = "Scrape job started in a new window. Check the scraping logs page for progress."
+        success = True
+    except Exception as e:
+        message = f"Failed to start scrape job: {e}"
+        success = False
+
+    return templates.TemplateResponse(
+        request, "_scrape_status.html",
+        {"message": message, "success": success},
+    )
 
 
 def _idea_embedding_text(c: dict) -> str:

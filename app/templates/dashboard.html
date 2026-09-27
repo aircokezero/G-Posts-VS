@@ -36,16 +36,42 @@
     </div>
 </div>
 
-<div class="grid md:grid-cols-2 gap-6">
+<div class="grid lg:grid-cols-2 gap-6 mb-6">
+    <div class="bg-white border rounded-lg p-4">
+        <h2 class="font-semibold mb-3">Content Gaps — You vs. Competitors</h2>
+        {% if gap_data_json != '{"topics": [], "competitor_pct": [], "own_pct": []}' %}
+        <canvas id="gapChart" height="220"></canvas>
+        {% if gap_insight %}
+        <div class="mt-4 bg-amber-50 border border-amber-200 rounded p-3 text-sm text-amber-800">
+            💡 {{ gap_insight }}
+        </div>
+        {% endif %}
+        {% else %}
+        <p class="text-sm text-gray-500">No analyzed competitor posts yet.</p>
+        {% endif %}
+    </div>
+
+    <div class="bg-white border rounded-lg p-4">
+        <h2 class="font-semibold mb-3">Posting Frequency Over Time</h2>
+        {% if freq_data_json != '{"weeks": [], "own_series": [], "competitor_series": []}' %}
+        <canvas id="freqChart" height="220"></canvas>
+        {% if freq_insight %}
+        <div class="mt-4 bg-blue-50 border border-blue-200 rounded p-3 text-sm text-blue-800">
+            💡 {{ freq_insight }}
+        </div>
+        {% endif %}
+        {% else %}
+        <p class="text-sm text-gray-500">No dated posts yet.</p>
+        {% endif %}
+    </div>
+</div>
+
+<div class="grid md:grid-cols-2 gap-6 mb-6">
     <div class="bg-white border rounded-lg p-4">
         <h2 class="font-semibold mb-3">Topic Trends</h2>
         <table class="w-full text-sm">
             <thead class="text-left text-gray-500">
-                <tr>
-                    <th class="py-1">Topic</th>
-                    <th class="py-1">Competitors</th>
-                    <th class="py-1">Posts</th>
-                </tr>
+                <tr><th class="py-1">Topic</th><th class="py-1">Competitors</th><th class="py-1">Posts</th></tr>
             </thead>
             <tbody>
                 {% for t in trends %}
@@ -73,7 +99,49 @@
     </div>
 </div>
 
-<div class="mt-6">
+<div class="flex gap-4">
+    <a href="/projects/{{ project.id }}/insights" class="text-sm text-blue-600 hover:underline">Ask about your data &rarr;</a>
     <a href="/posts?project_id={{ project.id }}" class="text-sm text-blue-600 hover:underline">Browse repository &rarr;</a>
 </div>
+
+<script>
+const gapData = {{ gap_data_json | safe }};
+const freqData = {{ freq_data_json | safe }};
+
+if (gapData.topics.length > 0) {
+    new Chart(document.getElementById('gapChart'), {
+        type: 'bar',
+        data: {
+            labels: gapData.topics,
+            datasets: [
+                { label: 'Competitors', data: gapData.competitor_pct, backgroundColor: '#9ca3af' },
+                { label: 'You', data: gapData.own_pct, backgroundColor: '#1f2937' },
+            ]
+        },
+        options: {
+            responsive: true,
+            scales: { y: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%' } } },
+            plugins: { legend: { position: 'top' } }
+        }
+    });
+}
+
+if (freqData.weeks.length > 0) {
+    new Chart(document.getElementById('freqChart'), {
+        type: 'line',
+        data: {
+            labels: freqData.weeks,
+            datasets: [
+                { label: 'You', data: freqData.own_series, borderColor: '#1f2937', backgroundColor: 'rgba(31,41,55,0.15)', fill: true, tension: 0.3 },
+                { label: 'Competitor avg', data: freqData.competitor_series, borderColor: '#9ca3af', backgroundColor: 'rgba(156,163,175,0.2)', fill: true, tension: 0.3 },
+            ]
+        },
+        options: {
+            responsive: true,
+            scales: { y: { beginAtZero: true, title: { display: true, text: 'Posts/week' } } },
+            plugins: { legend: { position: 'top' } }
+        }
+    });
+}
+</script>
 {% endblock %}

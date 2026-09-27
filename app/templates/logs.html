@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Scraping Logs — {{ project.name }}{% endblock %}
+
+{% block content %}
+<a href="/projects/{{ project.id }}" class="text-sm text-gray-500 hover:underline">&larr; {{ project.name }}</a>
+<h1 class="text-2xl font-bold mt-2 mb-6">Scraping Logs</h1>
+
+<div class="bg-white border rounded-lg overflow-x-auto">
+    <table class="w-full text-sm">
+        <thead class="bg-gray-100 text-left text-gray-600">
+            <tr>
+                <th class="px-4 py-2">Competitor</th>
+                <th class="px-4 py-2">Status</th>
+                <th class="px-4 py-2">Started</th>
+                <th class="px-4 py-2">Duration</th>
+                <th class="px-4 py-2">Found</th>
+                <th class="px-4 py-2">New</th>
+                <th class="px-4 py-2">Duplicates</th>
+                <th class="px-4 py-2">CAPTCHA?</th>
+                <th class="px-4 py-2">Error</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for job, competitor_name in jobs %}
+            <tr class="border-t">
+                <td class="px-4 py-2 font-medium">{{ competitor_name }}</td>
+                <td class="px-4 py-2">
+                    <span class="text-xs px-2 py-1 rounded
+                        {% if job.status == 'success' %}bg-green-100 text-green-700
+                        {% elif job.status == 'failed' %}bg-red-100 text-red-700
+                        {% elif job.status == 'awaiting_manual_verification' %}bg-amber-100 text-amber-700
+                        {% else %}bg-gray-100 text-gray-700{% endif %}">
+                        {{ job.status }}
+                    </span>
+                </td>
+                <td class="px-4 py-2 text-gray-500">{{ job.started_at.strftime("%d %b, %H:%M") if job.started_at else "—" }}</td>
+                <td class="px-4 py-2 text-gray-500">
+                    {% if job.started_at and job.ended_at %}
+                        {{ ((job.ended_at - job.started_at).total_seconds()) | round(1) }}s
+                    {% else %}—{% endif %}
+                </td>
+                <td class="px-4 py-2">{{ job.posts_found }}</td>
+                <td class="px-4 py-2 text-green-700">{{ job.new_posts_added }}</td>
+                <td class="px-4 py-2 text-gray-500">{{ job.duplicates_skipped }}</td>
+                <td class="px-4 py-2">{{ "Yes" if job.captcha_encountered else "—" }}</td>
+                <td class="px-4 py-2 text-red-500 text-xs max-w-xs truncate" title="{{ job.error_message or '' }}">{{ job.error_message or "—" }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="9" class="px-4 py-6 text-center text-gray-500">No scraping runs yet.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
