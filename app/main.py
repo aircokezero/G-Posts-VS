@@ -2,6 +2,8 @@
 FastAPI application entrypoint.
 """
 
+import base64
+from supabase import create_client
 from collections import Counter
 from datetime import datetime, timezone, time as dtime
 from fastapi import FastAPI, Request, Depends, Form
@@ -12,22 +14,24 @@ from core.db import get_db
 import json as json_module
 import subprocess
 import sys
+import os
 
 from core.models import Project, Competitor, Post, Keyword, GeneratedIdea, ScrapeJob, GeneratedIdea, ChatMessage
 from core.insights import compute_gap_data, compute_frequency_data, get_or_generate_insight
-from core.llm import analyze_posts_batch, embed_text, cosine_similarity, generate_content, generate_gap_insight, generate_frequency_insight, generate_starter_questions, generate_chat_response
+from core.llm import analyze_posts_batch, embed_text, cosine_similarity, generate_content, generate_image, generate_gap_insight, generate_frequency_insight, generate_starter_questions, generate_chat_response
 from core.taxonomy import TOPICS
 
 DAILY_GENERATION_LIMIT = 50
 DAILY_CHAT_LIMIT = 15
+DAILY_IMAGE_LIMIT = 10
 
 app = FastAPI(title="Google Maps Competitor Intelligence Tool")
 templates = Jinja2Templates(directory="app/templates")
 
 
 @app.get("/")
-def root():
-    return {"status": "ok"}
+def root(request: Request):
+    return templates.TemplateResponse(request, "landing.html", {})
 
 
 @app.get("/projects")
@@ -367,6 +371,49 @@ def do_generate_ideas(project_id: int, request: Request, count: str = Form("5"),
     return templates.TemplateResponse(request, "_generated_list.html", {"ideas": ideas})
 
 
+@app.post("/generated-ideas/{idea_id}/generate-image")
+def generate_idea_image(idea_id: int, request: Request, db: Session = Depends(get_db)):
+    idea = db.query(GeneratedIdea).filter(GeneratedIdea.id == idea_id).first()
+    if not idea:
+        return templates.TemplateResponse(request, "_generated_list.html", {"ideas": []})
+
+    today_start = datetime.combine(datetime.now(timezone.utc).date(), dtime.min, tzinfo=timezone.utc)
+    images_today = db.query(GeneratedIdea).filter(
+        GeneratedIdea.project_id == idea.project_id,
+        GeneratedIdea.image_generated_at >= today_start,
+    ).count()
+
+    if images_today >= DAILY_IMAGE_LIMIT:
+        return _render_ideas_with_message(db, idea.project_id, request,
+            f"Daily image generation limit ({DAILY_IMAGE_LIMIT}) reached for this project.")
+
+    if not idea.image_concept:
+        return _render_ideas_with_message(db, idea.project_id, request, "No image concept available for this idea.")
+
+    prompt = f"A professional marketing photo for a Google Maps business update. Concept: {idea.image_concept}. Photorealistic, appetizing/appealing commercial style, no text overlays."
+
+    try:
+        image_bytes = generate_image(prompt)
+        if not image_bytes:
+            return _render_ideas_with_message(db, idea.project_id, request, "Image generation failed — no image returned.")
+
+        supabase = _get_supabase_client()
+        bucket = os.environ["SUPABASE_BUCKET"]
+        remote_path = f"generated/{idea.id}_{datetime.now(timezone.utc).timestamp():.0f}.png"
+        supabase.storage.from_(bucket).upload(remote_path, image_bytes, {"content-type": "image/png"})
+        url = supabase.storage.from_(bucket).get_public_url(remote_path)
+
+        idea.image_url = url
+        idea.image_generated_at = datetime.now(timezone.utc)
+        db.commit()
+    except Exception as e:
+        print(f"Image generation failed: {e}")
+        return _render_ideas_with_message(db, idea.project_id, request, "Image generation failed — please try again later.")
+
+    ideas = db.query(GeneratedIdea).filter(GeneratedIdea.project_id == idea.project_id).order_by(GeneratedIdea.created_at.desc()).all()
+    return templates.TemplateResponse(request, "_generated_list.html", {"ideas": ideas})
+
+
 @app.post("/generated-ideas/bulk-delete")
 def bulk_delete_ideas(request: Request, project_id: int = Form(...), idea_ids: list[int] = Form(default=[]), db: Session = Depends(get_db)):
     if idea_ids:
@@ -580,3 +627,12 @@ def dedup_and_save(db: Session, project_id: int, candidates: list[dict], kind: s
 
     db.commit()
     return saved
+
+
+def _render_ideas_with_message(db, project_id, request, message):
+    ideas = db.query(GeneratedIdea).filter(GeneratedIdea.project_id == project_id).order_by(GeneratedIdea.created_at.desc()).all()
+    return templates.TemplateResponse(request, "_generated_list.html", {"ideas": ideas, "limit_message": message})
+
+
+def _get_supabase_client():
+    return create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])

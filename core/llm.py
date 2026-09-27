@@ -13,6 +13,8 @@ from google import genai
 from openai import OpenAI
 from pydantic import BaseModel, ValidationError
 from tenacity import retry, stop_after_attempt, wait_exponential
+import requests
+from urllib.parse import quote
 
 from core.taxonomy import TOPICS, CONTENT_TYPES
 
@@ -108,6 +110,31 @@ def cosine_similarity(a: list[float], b: list[float]) -> float:
     if norm_a == 0 or norm_b == 0:
         return 0.0
     return dot / (norm_a * norm_b)
+
+
+import requests
+from urllib.parse import quote
+
+
+def generate_image(prompt: str) -> bytes | None:
+    """
+    Uses Pollinations.ai's free, no-auth, URL-based image API — no API key,
+    no quota gate, unlike Gemini/Groq's image endpoints which turned out to
+    require paid access. Simple GET request, returns raw image bytes.
+    """
+    encoded_prompt = quote(prompt)
+    url = f"https://image.pollinations.ai/prompt/{encoded_prompt}"
+    params = {"width": 1024, "height": 1024, "model": "flux", "nologo": "true"}
+
+    try:
+        response = requests.get(url, params=params, timeout=30)
+        if response.status_code == 200:
+            return response.content
+        print(f"Pollinations returned status {response.status_code}")
+        return None
+    except Exception as e:
+        print(f"Pollinations request failed: {e}")
+        return None
 
 
 # Post analysis (topic/CTA/keyword classification)

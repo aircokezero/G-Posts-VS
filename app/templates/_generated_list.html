@@ -1,5 +1,4 @@
-<form id="bulk-delete-form" hx-post="/generated-ideas/bulk-delete" hx-target="#generated-list" hx-swap="innerHTML"
-      hx-confirm="Delete the selected idea(s)?">
+<form id="bulk-delete-form" hx-post="/generated-ideas/bulk-delete" hx-target="#generated-list" hx-swap="innerHTML">
     <input type="hidden" name="project_id" value="{{ ideas[0].project_id if ideas else '' }}">
 
     {% if limit_message %}
@@ -13,7 +12,7 @@
                    onclick="document.querySelectorAll('.idea-checkbox').forEach(cb => cb.checked = this.checked); updateDeleteButton();">
             Select all
         </label>
-        <button type="submit" id="delete-selected-btn" class="hidden text-red-500 text-sm hover:underline">Delete Selected</button>
+        <button type="submit" id="delete-selected-btn" hx-confirm="Delete the selected idea(s)?" class="hidden text-red-500 text-sm hover:underline">Delete Selected</button>
     </div>
     {% endif %}
 
@@ -30,9 +29,12 @@
                 </div>
                 {% if idea.image_concept %}
                 <div class="mt-2 text-xs text-gray-500 italic">Image concept: {{ idea.image_concept }}</div>
-                <button type="button" disabled class="mt-2 text-xs bg-gray-100 text-gray-400 rounded px-3 py-1 cursor-not-allowed">
-                    Generate AI Image (Coming soon)
-                </button>
+                                {% if idea.image_url %}
+                <img src="{{ idea.image_url }}" class="mt-2 rounded max-w-xs">
+                {% else %}
+                <button type="button" hx-post="/generated-ideas/{{ idea.id }}/generate-image" hx-target="#generated-list" hx-swap="innerHTML"
+                class="mt-2 text-xs bg-gray-900 text-white rounded px-3 py-1 hover:bg-gray-800">Generate AI Image</button>
+                {% endif %}
                 {% endif %}
             </div>
         </div>

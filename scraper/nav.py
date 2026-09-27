@@ -29,15 +29,30 @@ import re
 _FULL_PATTERN = re.compile(r"!4m(\d+)!3m(\d+)!(.*?)!16s")
 
 
-def build_posts_url(profile_url: str) -> str | None:
-    match = _FULL_PATTERN.search(profile_url)
+def build_posts_url(resolved_url: str) -> str | None:
+    match = _FULL_PATTERN.search(resolved_url)
     if match:
         m4, m3, middle = match.groups()
         new_segment = f"!4m{int(m4) + 2}!3m{int(m3) + 2}!{middle}!11m1!2e1!16s"
-        url = _FULL_PATTERN.sub(new_segment, profile_url, count=1)
+        url = _FULL_PATTERN.sub(new_segment, resolved_url, count=1)
         return url.replace("entry=tts", "entry=ttu")
 
-    if "entry=tts" in profile_url:
-        return profile_url.replace("entry=tts", "entry=ttu")
+    if "entry=tts" in resolved_url:
+        return resolved_url.replace("entry=tts", "entry=ttu")
 
     return None
+
+
+_PLACE_ID_PATTERN = re.compile(r"!1s(0x[0-9a-f]+:0x[0-9a-f]+)")
+
+def extract_place_id(resolved_url: str) -> str | None:
+    """
+    Extracts Google's internal place identifier from a resolved Maps URL —
+    used to detect duplicate competitor entries (same business added twice
+    under different URL formats), not for the posts-URL transform itself.
+    Composite URLs can contain two hex pairs (a contextual reference and
+    the actual target); takes the LAST match, consistent with what was
+    confirmed for CID extraction — the resolved place sits in the final position.
+    """
+    matches = _PLACE_ID_PATTERN.findall(resolved_url)
+    return matches[-1] if matches else None

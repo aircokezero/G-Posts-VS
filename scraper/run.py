@@ -6,14 +6,13 @@ Scrapes the own-business profile first, then every competitor.
 import sys
 import time
 from datetime import datetime, timezone
-import json
 
 from core.db import SessionLocal
 from core.models import Competitor, Post, ScrapeJob
 from core.services import make_fingerprint, refresh_competitor_stats
 from scraper.config import get_driver
 from scraper.captcha import looks_like_captcha_or_block
-from scraper.nav import build_posts_url
+from scraper.nav import build_posts_url, extract_place_id
 from scraper.post_scraper import extract_posts_from_profile
 
 
@@ -33,15 +32,7 @@ def scrape_competitor(db, driver, competitor: Competitor, project_id: int):
     db.commit()
 
     try:
-        posts_url = build_posts_url(competitor.profile_url)
-        if not posts_url:
-            job.status = "failed"
-            job.error_message = "Could not build posts URL from profile_url (unexpected URL shape)."
-            job.ended_at = datetime.now(timezone.utc)
-            db.commit()
-            return
-
-        driver.get(posts_url)
+        driver.get(competitor.profile_url)
         time.sleep(3)
 
         if looks_like_captcha_or_block(driver):
@@ -55,6 +46,35 @@ def scrape_competitor(db, driver, competitor: Competitor, project_id: int):
                 job.ended_at = datetime.now(timezone.utc)
                 db.commit()
                 return
+
+        resolved_url = driver.current_url
+        
+        place_id = extract_place_id(resolved_url)
+        if place_id:
+            duplicate = db.query(Competitor).filter(
+                Competitor.project_id == project_id,
+                Competitor.place_id == place_id,
+                Competitor.id != competitor.id,
+            ).first()
+            if duplicate:
+                job.status = "failed"
+                job.error_message = f"Duplicate business detected — same as competitor '{duplicate.name}' (id={duplicate.id}). Skipped to avoid double-counting."
+                job.ended_at = datetime.now(timezone.utc)
+                db.commit()
+                return
+            competitor.place_id = place_id
+            db.commit()
+
+        posts_url = build_posts_url(resolved_url)
+        if not posts_url:
+            job.status = "failed"
+            job.error_message = f"Could not derive a posts URL from the resolved page ({resolved_url[:200]}...). This may not be a valid Google Maps business profile."
+            job.ended_at = datetime.now(timezone.utc)
+            db.commit()
+            return
+
+        driver.get(posts_url)
+        time.sleep(2)
 
         raw_posts = extract_posts_from_profile(driver)
 
