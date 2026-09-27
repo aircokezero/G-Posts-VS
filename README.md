@@ -1,7 +1,6 @@
-# Google Maps Competitor Update Intelligence Tool
+# G-Posts VS: A Google Maps Competitor Posts Monitoring Intelligence Tool
 
-A web-based competitor intelligence tool focused on Google Maps Updates to collect posts from competitor business profiles, analyze trends, and generate AI draft updates.
-
+A web interface that enables businesses to track their competitors on Google Maps posts, analyze that data, and use GenAI features that create actionable insights.
 
 ## License
 
