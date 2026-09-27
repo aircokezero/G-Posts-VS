@@ -17,3 +17,4 @@ imagehash
 undetected-chromedriver
 selenium
 requests
+psycopg[binary]
