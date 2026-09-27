@@ -102,7 +102,6 @@ DAYS = ["Friday", "Saturday", "Sunday"]
 
 # small pool of real image files you place locally before running this script
 IMAGE_POOL_DIR = "seed/images"  # put ~8-10 .jpg/.png files here
-IMAGE_POOL = [f"food_{i}.jpg" for i in range(1, 9)]  # adjust to match what's actually in the folder
 
 
 # ─────────────────────────────────────────────
@@ -169,7 +168,6 @@ def run():
     bucket = None
     try:
         from supabase import create_client
-        import os
         from dotenv import load_dotenv
         load_dotenv()
         supabase_client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
@@ -183,7 +181,16 @@ def run():
         own_business_profile_url=OWN_BUSINESS_URL,
     )
     db.add(project)
-    db.flush()  # get project.id without committing yet
+    db.flush()
+
+    own_business_competitor = Competitor(
+        project_id=project.id,
+        name=OWN_BUSINESS_NAME,
+        profile_url=OWN_BUSINESS_URL,
+        is_own_business=True,
+    )
+    db.add(own_business_competitor)
+    db.flush()
 
     for kw in KEYWORDS:
         db.add(Keyword(project_id=project.id, keyword=kw))
@@ -219,15 +226,37 @@ def run():
             )
             db.add(post)
 
-        competitor.total_posts_collected = len(competitor_templates)
-        competitor.last_scraped_at = datetime.now(timezone.utc)
-        competitor.last_scrape_status = "success"
+    # own-business gets a few posts too — fewer than competitors, so gap
+    # analysis and frequency charts have something real to compare
+    own_templates = random.sample(POST_TEMPLATES, 3)
+    for template in own_templates:
+        filled = fill_template(template)
+        image_url = upload_random_image(supabase_client, bucket) if supabase_client else None
+        post_url = f"{OWN_BUSINESS_URL}&post={random.randint(10000,99999)}"
+        published_date = random_recent_date()
 
-    db.commit()  # commit posts first so refresh_competitor_stats can count them
+        post = Post(
+            project_id=project.id,
+            competitor_id=own_business_competitor.id,
+            post_url=post_url,
+            post_text=filled["text"],
+            published_date=published_date,
+            image_urls=[image_url] if image_url else [],
+            cta=filled["cta"],
+            topic=filled["topic"],
+            content_type=filled["content_type"],
+            offer_detected=filled["offer"],
+            fingerprint=make_fingerprint(post_url, filled["text"], published_date),
+            source_reference="seed_demo_data",
+        )
+        db.add(post)
 
-    for comp_data in COMPETITORS:
+    db.commit()  # commit ALL posts (competitors' + own-business's) before refreshing stats
+
+    all_competitor_names = [c["name"] for c in COMPETITORS] + [OWN_BUSINESS_NAME]
+    for name in all_competitor_names:
         competitor = db.query(Competitor).filter(
-            Competitor.project_id == project.id, Competitor.name == comp_data["name"]
+            Competitor.project_id == project.id, Competitor.name == name
         ).first()
         if competitor:
             refresh_competitor_stats(db, competitor.id)
