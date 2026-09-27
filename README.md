@@ -164,3 +164,8 @@ seed/       Demo dataset generator
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Project Demostration Video
+
+A video summarizing the project and key bits of it's architecture was made for this project.
+![Watch here](https://youtu.be/htjZKmci4f4)
