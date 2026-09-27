@@ -1,4 +1,4 @@
-# G-Posts VS: A Google Maps Competitor Posts Monitoring Intelligence Tool
+# G-Posts V/S: A Google Maps Competitor Posts Monitoring Intelligence Tool
 
 A web interface that enables businesses to track their competitors on Google Maps posts, analyze that data, and use GenAI features that create actionable insights.
 

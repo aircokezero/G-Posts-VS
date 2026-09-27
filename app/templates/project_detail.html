@@ -22,8 +22,11 @@
             hx-indicator="#analysis-spinner"
             class="bg-gray-900 text-white rounded px-4 py-2 text-sm mt-2">Analyze New Posts</button>
         <span id="analysis-spinner" class="htmx-indicator text-sm text-gray-500 ml-2">Analyzing...</span>
-        <button hx-post="/projects/{{ project.id }}/scrape" hx-target="#scrape-status" hx-swap="innerHTML"
-        class="bg-gray-900 text-white rounded px-4 py-2 text-sm mt-2 ml-2">Start Scrape Job(s)</button>
+        {% if not is_hosted %}
+            <button hx-post="/projects/{{ project.id }}/scrape" hx-target="#scrape-status" hx-swap="innerHTML"
+            class="bg-gray-900 text-white rounded px-4 py-2 text-sm mt-2 ml-2">Start Scrape Job(s)</button>
+        <div id="scrape-status" class="mt-2"></div>
+        {% endif %}
 <div id="scrape-status" class="mt-2"></div>
     <div id="analysis-status" class="mt-2"></div>
         <h2 class="font-semibold mb-3">Competitors</h2>

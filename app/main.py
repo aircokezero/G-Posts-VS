@@ -2,7 +2,6 @@
 FastAPI application entrypoint.
 """
 
-import base64
 from supabase import create_client
 from collections import Counter
 from datetime import datetime, timezone, time as dtime
@@ -24,6 +23,7 @@ from core.taxonomy import TOPICS
 DAILY_GENERATION_LIMIT = 50
 DAILY_CHAT_LIMIT = 15
 DAILY_IMAGE_LIMIT = 10
+IS_HOSTED = os.environ.get("IS_HOSTED", "false").lower() == "true"
 
 app = FastAPI(title="Google Maps Competitor Intelligence Tool")
 templates = Jinja2Templates(directory="app/templates")
@@ -44,17 +44,14 @@ def projects_page(request: Request, db: Session = Depends(get_db)):
 def project_detail(project_id: int, request: Request, db: Session = Depends(get_db)):
     project = db.query(Project).filter(Project.id == project_id).first()
     competitors = (
-        db.query(Competitor)
-        .filter(Competitor.project_id == project_id)
-        .order_by(Competitor.is_own_business.desc(), Competitor.created_at)
-        .all()
+        db.query(Competitor).filter(Competitor.project_id == project_id)
+        .order_by(Competitor.is_own_business.desc(), Competitor.created_at).all()
     )
     keywords = db.query(Keyword).filter(Keyword.project_id == project_id).all()
     return templates.TemplateResponse(
         request, "project_detail.html",
-        {"project": project, "competitors": competitors, "keywords": keywords},
+        {"project": project, "competitors": competitors, "keywords": keywords, "is_hosted": IS_HOSTED},
     )
-
 
 @app.get("/projects/{project_id}/generate")
 def generate_page(project_id: int, request: Request, db: Session = Depends(get_db)):

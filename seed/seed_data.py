@@ -4,7 +4,6 @@ Run with: python -m seed.seed_data
 """
 
 import os
-import hashlib
 import random
 from datetime import datetime, timedelta, timezone
 

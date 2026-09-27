@@ -16,3 +16,4 @@ Pillow
 imagehash
 undetected-chromedriver
 selenium
+requests
