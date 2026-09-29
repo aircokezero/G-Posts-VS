@@ -10,7 +10,7 @@ Built project-by-project: create a project, add your own business profile and ma
 
 The hosted version runs the full application against a shared database pre-populated with a working demo dataset, so every feature — repository browsing, AI analysis, trends, the dashboard, the insights chatbot, and content generation — is usable immediately without any setup or login.
 
-Live scraping is intentionally **not** triggerable from the hosted site. A real, interactive Google Maps scraping session (with a visible browser window and manual CAPTCHA-solving support) cannot run inside a headless cloud container. Instead, the hosted "Queue Scrape Job(s)" trigger and the local worker architecture (see **Scraper Architecture** below) are designed so a scrape can be *queued* from the hosted site and *executed* by a locally-running worker against the same shared database — demonstrated separately, as intended by the assignment brief (see "Demo and Pre-Scraped Repository" in the brief: live scraping must never be the only way to evaluate the system).
+Live scraping is intentionally **not** triggerable from the hosted site. A real, interactive Google Maps scraping session (with a visible browser window and manual CAPTCHA-solving support) cannot run inside a headless cloud container. In brief: live scraping must never be the only way to evaluate the system.
 
 The scraping logs page on the hosted site shows real results from live scraping runs already performed against real, publicly findable businesses, as direct evidence the scraper works end-to-end.
 
@@ -20,15 +20,15 @@ The scraping logs page on the hosted site shows real results from live scraping 
 
 - **Project-based workflow** — create a project, define your own business, manually add competitors, optionally add discovery keywords
 - **Own-business tracking** — your own profile is modeled as a specially-flagged competitor entry, enabling direct "you vs. them" comparison throughout the app, not just standalone competitor data
-- **Google Maps Updates/Posts scraping** — Selenium-based, focused strictly on owner-authored posts (not reviews, not visitor-submitted "updates," per the assignment's scope)
+- **Google Maps Updates/Posts scraping** — Selenium-based, focused strictly on owner-authored posts (not reviews, not visitor-submitted "updates," per the project's scope)
 - **Duplicate detection** — database-level fingerprinting (post URL, or normalized text + date as a fallback) prevents re-inserting the same post twice on re-scrape
 - **Duplicate-competitor detection** — Google's internal place identifier is extracted from resolved URLs to prevent the same real business from existing as two separate competitor entries
 - **CAPTCHA / anti-automation handling** — the scraper detects CAPTCHA/block pages, pauses, and waits for manual solving before continuing; every scrape attempt is logged, including verification events
 - **AI-powered post analysis** — every post is classified into a fixed topic taxonomy, with CTA, content type, and offer detection, using a two-provider LLM setup with automatic fallback
-- **Trend analysis** — topic usage computed as "X of Y competitors (Z%)," matching the assignment's own worked example
+- **Trend analysis** — topic usage computed as "X of Y competitors (Z%)"
 - **Actionable dashboard** — not just metrics: a content-gap visualization (topics competitors use that you don't), a posting-frequency comparison (you vs. competitor average over time), and cached, automatically-refreshed natural-language insights under each chart
 - **Insights chatbot** — a grounded, conversational way to ask questions about the collected competitive data, with suggested starter questions and a daily usage cap
-- **Content idea generation** — grounded in real trend/CTA/frequency data from the project's own repository, not generic content; supports generating any requested quantity of ideas per the assignment's examples (3, 10, 50)
+- **Content idea generation** — grounded in real trend/CTA/frequency data from the project's own repository, not generic content; (3, 10, 50)
 - **Duplicate-idea prevention** — embedding-based similarity checking (not just exact-text matching) plus prompt-level exclusion of prior ideas, so repeated generation requests don't return near-identical content
 - **AI image generation** — a free, no-API-key image generation provider is used to produce an accompanying image for any generated content idea
 - **Full repository browser** — search and filter the collected post repository by project, competitor, topic, date, keyword, and data source (demo vs. live-scraped)
@@ -56,7 +56,7 @@ The scraping logs page on the hosted site shows real results from live scraping 
 - **FastAPI + Jinja2 + HTMX** avoids a separate frontend build/deploy pipeline entirely — server-rendered HTML with HTMX-driven partial updates gives a responsive, app-like feel without a JS framework.
 - **Neon over a self-hosted or free-tier-paused Postgres** — some managed Postgres free tiers auto-pause a project's compute after a period of inactivity, which risks the evaluator hitting a dead database mid-evaluation. Neon's free tier scales compute to zero but does not lock the project behind a manual restore step.
 - **Supabase Storage, not Supabase's database** — used purely for object storage (post images, generated images), specifically to avoid requiring a payment method (a blocker with some alternative storage providers) while keeping the actual application database on Neon.
-- **Two independent AI providers (Gemini + Groq)** with automatic fallback on any failure (quota exhaustion, transient error) — satisfies the assignment's requirement for at least two AI providers in a way that provides resilience.
+- **Two independent AI providers (Gemini + Groq)** with automatic fallback on any failure (quota exhaustion, transient error) — satisfies the project's requirement for at least two AI providers in a way that provides resilience.
 - **Pollinations.ai for images** — both Gemini's and Groq's image-generation capabilities require paid access even at low volume; Pollinations offers a genuinely free, keyless, URL-based generation endpoint suited to a student-budget project.
 
 ---
@@ -76,7 +76,7 @@ The scraper is a separate Python process from the web application, by design:
 - **CAPTCHA handling requires a real, visible browser** a person can interact with — this cannot run headless on a cloud host, and a headless scraper is also far more likely to trigger anti-automation defenses in the first place.
 - **Local worker model**: `scraper/worker.py` runs on a local machine and polls the shared database for queued scrape jobs. The hosted web app's "Queue Scrape Job(s)" button simply inserts pending job rows — it does not attempt to run Selenium itself. A manual, single-project CLI (`scraper/run.py`) is also available for direct local use.
 - **Navigation**: rather than requiring a user to supply an exact, "correct" Google Maps URL format (fragile — Maps URLs vary significantly by how they were copied/shared), the scraper navigates to whatever URL the user provided, lets Google's own redirects resolve it, and reads the final resolved URL back from the browser. A URL transformation (confirmed empirically against multiple real businesses across two countries) is then applied to reach the owner-posts view specifically.
-- **Owner-posts scoping**: the extractor distinguishes genuine owner-authored posts from Google's separate "Updated by visitors" content (which is closer to review/photo activity than a business post) using structural signals confirmed against real inspected markup, and only stores owner posts — keeping the repository within the assignment's defined scope ("Google Maps Updates/Posts" specifically).
+- **Owner-posts scoping**: the extractor distinguishes genuine owner-authored posts from Google's separate "Updated by visitors" content (which is closer to review/photo activity than a business post) using structural signals confirmed against real inspected markup, and only stores owner posts — keeping the repository within the project's defined scope ("Google Maps Updates/Posts" specifically).
 - **Duplicate detection** operates at two levels: per-post (via a stable fingerprint derived from post URL, or normalized text + publish date as a fallback) and per-competitor (via Google's internal place identifier, preventing the same real business from being tracked as two separate competitor entries).
 
 ---
