@@ -63,7 +63,7 @@ The scraping logs page on the hosted site shows real results from live scraping 
 
 ## AI Providers Used
 
-1. **Google Gemini** (`gemini-2.5-flash` for text; `gemini-embedding-001` for duplicate-idea detection) — primary text provider
+1. **Google Gemini** (`gemini-3.5-flash-lite` for text; `gemini-embedding-001` for duplicate-idea detection) — primary text provider
 2. **Groq** (`openai/gpt-oss-120b`) — automatic fallback if Gemini fails or is rate-limited
 3. **Pollinations.ai** — image generation for AI-generated post concepts
 
