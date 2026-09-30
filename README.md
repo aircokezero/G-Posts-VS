@@ -1,6 +1,6 @@
 # G-Posts V/S: A Google Maps Competitor Posts Monitoring Intelligence Tool
 
-A web interface that enables businesses to track their competitors on Google Maps posts, analyze that data, and use GenAI features that create actionable insights.
+A web interface that enables businesses to track their competitors on Google Maps posts using a web scraper, perform data analytics, and use GenAI features that create actionable content ideas.
 
 Built project-by-project: create a project, add your own business profile and manually-added competitors, optionally add discovery keywords, collect Google Maps Updates/Posts (via a pre-populated demo dataset and/or live scraping), analyze what competitors are publishing with AI, see trends and content gaps, and generate grounded, deduplicated content ideas — including AI-generated images — for your own next post.
 
